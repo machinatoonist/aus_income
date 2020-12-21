@@ -4,7 +4,7 @@
 library(tidyverse)
 library(tidyquant)
 library(readxl)
-library(stringr)
+library(string)
 
 # Load Data ----
 
@@ -122,6 +122,25 @@ summary_by_age_tbl <- trim_age_tbl %>%
 summary_by_age_tbl %>% glimpse()
 summary_by_age_tbl %>% View()
 
+summary_tbl_over_70k <- trim_tbl %>%
+  group_by(occupation_group, Sex) %>%
+  summarize(individuals = sum(individuals_obs),
+            ave_taxable_income = sum(taxable_income_au)/sum(taxable_income_obs),
+            ave_total_income = sum(income_tot_au)/sum(income_tot_nobs),
+            ave_salary = sum(salary_tot_au)/sum(salary_tot_nobs)
+  ) %>%
+  filter(ave_taxable_income > 70000) %>%
+  arrange(desc(ave_taxable_income)) %>% 
+  mutate(
+    occupation_group = str_remove_all(occupation_group, pattern = "[0-9]"),
+    n_text = str_c(format(individuals / 1e3, digits = 2), "k", sep = ""))
+
+path_save <- "00_Data/taxable_income_2018.xls"
+write.xlsx(summary_tbl_over_70k, file = "taxable_income_2018.xlsx", sheetName = "Income", 
+           col.names = TRUE, row.names = TRUE, append = FALSE)
+
+write_excel_csv(summary_tbl_over_70k, file = "00_Data/taxable_income_2018.xls",append = FALSE)
+
   
 # Visualisation of Income ----
 
@@ -152,18 +171,6 @@ summary_tbl_120 %>%
        y = "Taxable Income - $A", x = "Occupation Group") +
   theme(legend.position = c(.8, .8)) +
   guides(x = guide_axis(angle = 45))
-
-summary_tbl_all %>%
-  ggplot(aes(x = occupation_group, y = ave_taxable_income, fill = Sex)) + 
-  aes(reorder(occupation_group,ave_taxable_income), ave_taxable_income) +
-  geom_col(position = "dodge2") +
-  scale_y_continuous(labels = scales::dollar) +
-  theme_tq() +
-  scale_size(range = c(3,5)) +
-  labs(title = "Average Taxable Income For Individuals in Australia - 2017-18",
-       subtitle = "Grouped by Occupation - Sorted From Lowest to Highest",
-       y = "Taxable Income - $A", x = "") +
-  theme(legend.position = c(.8, .8)) 
 
 summary_by_age_tbl %>%
   ggplot(aes(x = age_range, y = ave_taxable_income, fill = Sex)) + 
